@@ -1,52 +1,299 @@
-# Prerequisites
-*.d
+// Autor: Daniel Micha
+// Criado em 10/2016. Atualizado em 06/2020.
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+// Materiais necessários: 4 LEDs, 5 botões, 1 buzina, 1 display de sete segmentos, cabos, protoboard e Arduíno.
+// Link para vídeo tutorial: youtube
 
-# Linker output
-*.ilk
-*.map
-*.exp
+// Cabeçalho - Definições iniciais do programa: variáveis, constantes e funções adicionais
+// Chamada para as funções que estão definidas no rodapé do programa. Veja maiores detalhes sobre elas nos seus comentários.
+void turnON(int SET);
+int readButtons(void);
+void lostFunction(void);
+void wonFunction(void);
 
-# Precompiled Headers
-*.gch
-*.pch
+// Definição de variáveis para uso das portas do Arduíno
+int BUTTON1=2, BUTTON2=3, BUTTON3=4, BUTTON4=5;
+int LED1=6, LED2=7, LED3=8, LED4=9;
+int BEEP=10, BeepTime=300;
+int START_BUTTON=11;
+int SSD_RT=12, SSD_RB=13, SSD_TT=14, SSD_BB=15, SSD_LT=16, SSD_LB=17, SSD_CC=18; // Aqui estão os sete segmentos do display.
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+// Outras definições iniciais: variáveis e constantes usadas no jogo.
+int BUTTON1status=0, BUTTON2status=0, BUTTON3status=0, BUTTON4status=0, ONstatus=0;
+int level=1, aleatory, buttonPress, count=0, record=1;
+bool perdeu=false, endOfList=false;
+int sequenciaJogo[15]={};
+int sequenciaUsuario[15]={};
+byte seven_seg_digits[11][7] = { // Definição de como se liga cada número no display com uma matriz com sete 11 colunas colunas e 7 linhas.
+  { 1, 1, 1, 1, 1, 1, 0 }, // = 0
+  { 0, 1, 1, 0, 0, 0, 0 }, // = 1
+  { 1, 1, 0, 1, 1, 0, 1 }, // = 2
+  { 1, 1, 1, 1, 0, 0, 1 }, // = 3
+  { 0, 1, 1, 0, 0, 1, 1 }, // = 4
+  { 1, 0, 1, 1, 0, 1, 1 }, // = 5
+  { 1, 0, 1, 1, 1, 1, 1 }, // = 6
+  { 1, 1, 1, 0, 0, 0, 0 }, // = 7
+  { 1, 1, 1, 1, 1, 1, 1 }, // = 8
+  { 1, 1, 1, 0, 0, 1, 1 }, // = 9
+  { 0, 0, 0, 0, 0, 0, 0 } // = blank
+};
+// Definição da frequência de cada nota musical para a música do Super Mário
+#define NOTE_B0  31
+#define NOTE_C1  33
+#define NOTE_CS1 35
+#define NOTE_D1  37
+#define NOTE_DS1 39
+#define NOTE_E1  41
+#define NOTE_F1  44
+#define NOTE_G1  49
+#define NOTE_GS1 52
+#define NOTE_FS1 46
+#define NOTE_A1  55
+#define NOTE_AS1 58
+#define NOTE_B1  62
+#define NOTE_C2  65
+#define NOTE_CS2 69
+#define NOTE_D2  73
+#define NOTE_DS2 78
+#define NOTE_E2  82
+#define NOTE_F2  87
+#define NOTE_FS2 93
+#define NOTE_G2  98
+#define NOTE_GS2 104
+#define NOTE_A2  110
+#define NOTE_AS2 117
+#define NOTE_B2  123
+#define NOTE_C3  131
+#define NOTE_CS3 139
+#define NOTE_D3  147
+#define NOTE_DS3 156
+#define NOTE_E3  165
+#define NOTE_F3  175
+#define NOTE_FS3 185
+#define NOTE_G3  196
+#define NOTE_GS3 208
+#define NOTE_A3  220
+#define NOTE_AS3 233
+#define NOTE_B3  247
+#define NOTE_C4  262
+#define NOTE_CS4 277
+#define NOTE_D4  294
+#define NOTE_DS4 311
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_FS4 370
+#define NOTE_G4  392
+#define NOTE_GS4 415
+#define NOTE_A4  440
+#define NOTE_AS4 466
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_CS5 554
+#define NOTE_D5  587
+#define NOTE_DS5 622
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_FS5 740
+#define NOTE_G5  784
+#define NOTE_GS5 831
+#define NOTE_A5  880
+#define NOTE_AS5 932
+#define NOTE_B5  988
+#define NOTE_C6  1047
+#define NOTE_CS6 1109
+#define NOTE_D6  1175
+#define NOTE_DS6 1245
+#define NOTE_E6  1319
+#define NOTE_F6  1397
+#define NOTE_FS6 1480
+#define NOTE_G6  1568
+#define NOTE_GS6 1661
+#define NOTE_A6  1760
+#define NOTE_AS6 1865
+#define NOTE_B6  1976
+#define NOTE_C7  2093
+#define NOTE_CS7 2217
+#define NOTE_D7  2349
+#define NOTE_DS7 2489
+#define NOTE_E7  2637
+#define NOTE_F7  2794
+#define NOTE_FS7 2960
+#define NOTE_G7  3136
+#define NOTE_GS7 3322
+#define NOTE_A7  3520
+#define NOTE_AS7 3729
+#define NOTE_B7  3951
+#define NOTE_C8  4186
+#define NOTE_CS8 4435
+#define NOTE_D8  4699
+#define NOTE_DS8 4978
+#define melodyPin BEEP
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+// Composição da melodia da música do Super Mário
+int melody[] = {
+  NOTE_E7, NOTE_E7, 0, NOTE_E7, 0, NOTE_C7, NOTE_E7, 0,NOTE_G7, 0, 0,  0, NOTE_G6, 0, 0, 0, NOTE_C7, 0, 0, NOTE_G6, 0, 0, NOTE_E6, 0,
+  0, NOTE_A6, 0, NOTE_B6, 0, NOTE_AS6, NOTE_A6, 0, NOTE_G6, NOTE_E7, NOTE_G7, NOTE_A7, 0, NOTE_F7, NOTE_G7, 0, NOTE_E7, 0, NOTE_C7, NOTE_D7, NOTE_B6, 0, 0,
+  NOTE_C7, 0, 0, NOTE_G6, 0, 0, NOTE_E6, 0, 0, NOTE_A6, 0, NOTE_B6, 0, NOTE_AS6, NOTE_A6, 0, NOTE_G6, NOTE_E7, NOTE_G7, NOTE_A7, 0, NOTE_F7, NOTE_G7, 0,
+  NOTE_E7, 0, NOTE_C7, NOTE_D7, NOTE_B6, 0, 0
+};
+// Tempos da melodia da música do Super Mário
+int tempo[] = {
+  12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 9, 9, 9, 12, 12, 12, 12, 12,
+  12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 9, 9, 9, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12
+};
+// Fim do Cabeçalho.
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+// Setup: instruções para serem executadas apenas 1 vez na inicialização do Arduíno.
+void setup() {
+  // Aqui basicamente eu definno as instruções para as portas do Arduíno, quais serão entradas e saídas e quais portas analógicas e digitais serão usadas.
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(LED4, OUTPUT);
+  pinMode(BUTTON1, INPUT);
+  pinMode(BUTTON2, INPUT);
+  pinMode(BUTTON3, INPUT);
+  pinMode(BUTTON4, INPUT);
+  pinMode(BEEP, OUTPUT);
+  pinMode(SSD_RT, OUTPUT); pinMode(SSD_RB, OUTPUT); pinMode(SSD_TT, OUTPUT); pinMode(SSD_BB, OUTPUT);
+  pinMode(SSD_LT, OUTPUT); pinMode(SSD_LB, OUTPUT); pinMode(SSD_CC, OUTPUT);
+  randomSeed(analogRead(6)); //Essa variável serve para estabelecer a semente para a geração do número aleatório. Ela lê a tensão em uma porta qualquer desconectada.
+                             //Como a leitura deve captar um ruído, isso garante que será diferente a cada vwez que o jogo iniciar.
+  sevenSegWrite(1); //Inicializa o display com o número 1.
+}
+// Fim do Setup
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+// Loop: instruções para serem executadas em loop pelo Arduíno. Aqui estão as instruções do jogo propriamente ditas.
+void loop() {
+  // Instruções para aguardar o usuário apertar o botão ON/OFF para iniciar o jogo.
+  ONstatus=LOW;
+  while(ONstatus==LOW){
+    ONstatus=digitalRead(START_BUTTON);
+  }
+  // Instruções usadas até que o usuário perca o jogo.
+  while(perdeu==false){
+    // Instruções para acender os LEDs
+    aleatory=random(LED1, LED4+1); // Geração do número aleatório para acender um LED.
+    sequenciaJogo[level-1]=aleatory; // Guarda o no. aleatório na sequência do jogo.
+    for(count=0; count<level; count++){
+      turnON(sequenciaJogo[count], BeepTime); // Acende os LEDs na sequência aleatória
+    }
+    // Instruções para ler a sequência de botões apertada pelo usuário.
+    for(count=0; count<level; count++){
+      buttonPress=readButtons(); // Lê o botão
+      turnON(buttonPress, BeepTime/2); // Acende o LED correspondente ao botão que o usuário apertou.
+      sequenciaUsuario[count]=buttonPress; // Armazena a informação do botão apertado pelo usuário na sequência.
+    }
+    // Instruções para comparar as duas sequências.
+    for(count=0; count<level; count++){
+      if(sequenciaUsuario[count] != sequenciaJogo[count]){
+        perdeu=true; // Caso as sequências do jogo e do usuário sejam diferentes (!=), o usuário perdeu. Caso contrário, a variável perdeu continua como false.
+      }
+    }
+    // Instruções para dar sequência no jogo (usuário acertou) ou para encerrar o jogo (usuário perdeu).
+    if(perdeu==true){
+      // Instruções caso o usuário tenha perdido: fazer barulho de derrota e, caso tenha batido o recorde, tocar a música do Super Mário.
+      lostFunction(); // Barulho de derrota.
+      if(record<level){
+        sing(); // Toca a música do Super Mário
+        record=level; // Estabelece o novo recorde na memória do Arduíno.
+      }
+      level=1; // "Zera" o nível.
+    }else{
+      // Instruções caso o usuário tenha ganhado: seguir adiante com o jogo aumentando o nível e fazendo barulho de vitória.
+      level++; // Aumenta o nível.
+      wonFunction(); // Barulho de vitória.
+    }
+    sevenSegWrite(level); // Muda o número do display para o nível atual.
+  } // Fim do while que estabelece o jogo.
+  perdeu=false; // Reinicializa a variável perdeu para iniciar um novo jogo.
+}
+// Fim do loop
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+//Rodapé: Definição das funções eextras usadas no jogo.
+
+//Função turnOn serve para acender o LED que está na porta SET e tocar a buzina com uma nota característica para cada LED por um instante de tempo timeBeep.
+void turnON(int SET, int timeBeep){
+    digitalWrite(SET, HIGH); // Acende o LED.
+    tone(BEEP, ((abs(SET-8)*120)+440), 50); // Toca a buzina.
+    delay(timeBeep); // Aguarda um tempo timeBeep.
+    digitalWrite(SET, LOW); // Apaga o LED.
+}
+
+//Função readButtons serve para ler o botão pressionado pelo usuário e retorna o número do LED pressionado.
+int readButtons(void){
+  bool input=false;
+  
+  while(input==false){
+    BUTTON1status=digitalRead(BUTTON1);
+    BUTTON2status=digitalRead(BUTTON2);
+    BUTTON3status=digitalRead(BUTTON3);
+    BUTTON4status=digitalRead(BUTTON4);
+    if (BUTTON1status==1){
+      input=true;
+      return LED1;
+    }else if (BUTTON2status==1){
+      input=true;
+      return LED2;
+    }else if (BUTTON3status==1){
+      input=true;
+      return LED3;
+    }else if (BUTTON4status==1){
+      input=true;
+      return LED4;
+    }
+  }
+}
+
+//Função lostFunction serve apenas para tocar a buzina com som de derrota.
+void lostFunction(void){
+  tone(BEEP, 87.3, 500);
+  delay(1000);
+}
+
+//Função lostFunction serve apenas para tocar a buzina com som de vitória.
+void wonFunction(void){
+  tone(BEEP, 440, 200);
+  delay(100);
+  tone(BEEP, 880, 200);
+  delay(100);
+  tone(BEEP, 1760, 200);
+  delay(1000);
+}
+
+//Função sevenSegWrite serve para acender o display com o número recebido digit.
+void sevenSegWrite(byte digit) {
+  byte pin = SSD_RT;
+  for (byte segCount = 0; segCount < 7; ++segCount) {
+    digitalWrite(pin, seven_seg_digits[digit][segCount]);
+    ++pin;
+  }
+}
+
+// Função sing serve para tocar a música do Super Mário. Para alterar a música, substitua o conjunto de notas e tempo no cabeçalho.
+void sing() {
+  Serial.println(" 'Mario Theme'");
+  int size = sizeof(melody) / sizeof(int);
+  for (int thisNote = 0; thisNote < size; thisNote++) {
+    int noteDuration = 1000 / tempo[thisNote];
+    buzz(melodyPin, melody[thisNote], noteDuration);
+    int pauseBetweenNotes = noteDuration * 1.30;
+    sevenSegWrite(8);
+    delay(pauseBetweenNotes);
+    sevenSegWrite(10);
+    buzz(melodyPin, 0, noteDuration);
+    }
+}
+
+// Função buzz serve para tocar a buzina adequadamente durante a música. Recebe a porta da buzina como targetPin, a frequência da nota e o tempo.
+void buzz(int targetPin, long frequency, long length) {
+  long delayValue = 1000000 / frequency / 2;
+  long numCycles = frequency * length / 1000;
+  for (long i = 0; i < numCycles; i++) {
+    digitalWrite(targetPin, HIGH);
+    delayMicroseconds(delayValue);
+    digitalWrite(targetPin, LOW);
+    delayMicroseconds(delayValue);
+  }
+}   
+
